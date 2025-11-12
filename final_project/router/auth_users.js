@@ -4,7 +4,7 @@ let books = require("./booksdb.js");
 const regd_users = express.Router();
 
 // Secret key for JWT (can be any string)
-const secretKey = "myReview";
+const secretKey = "fingerprint_customer";
 const jwtSecret = "access";
 
 // This array must contain users added through the registration process.
