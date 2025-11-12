@@ -74,7 +74,7 @@ regd_users.post("/login", (req,res) => {
 regd_users.put("/auth/review/:isbn", (req, res) => {
     //1. Get ISBN from URL parameters and review text from query parameter
     const isbn = req.params.isbn;
-    const review = req.params.review;
+    const review = req.query.review;
 
     //2. Get the username from the session (set during successful login)
     //The username is guaranteed to existbecause this is an /auth/* route protected by middleware
@@ -91,11 +91,11 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
         book.reviews[username] = review;
 
         return res.status(200).json({
-            message: 'Review for ISBN ${isbn} by user ${username} added/modyfied successfully.',
+            message: `Review for ISBN ${isbn} by user ${username} added/modyfied successfully.`,
             review: book.reviews[username] //Show the new review
         });
     } else {
-        return res.status(404).json({message: 'Book with ISBN ${isbn} not found.'});
+        return res.status(404).json({message: `Book with ISBN ${isbn} not found.`});
     }
 });
 
