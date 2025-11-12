@@ -4,7 +4,8 @@ let books = require("./booksdb.js");
 const regd_users = express.Router();
 
 // Secret key for JWT (can be any string)
-const secretKey = "your_jwt_secret_key"; 
+const secretKey = "myReview";
+const jwtSecret = "access";
 
 // This array must contain users added through the registration process.
 let users = []; 
@@ -53,10 +54,10 @@ regd_users.post("/login", (req,res) => {
         }, secretKey, { expiresIn: '1h' }); // Token expires in 1 hour
 
         // 4. Store token in session (if session/cookies are used, otherwise optional)
-        // req.session.authorization = {
-        //     accessToken: token,
-        //     username: username
-        // }
+         req.session.authorization = {
+             accessToken: token,
+             username: username
+         }
         
         // 5. Send success response (return the token)
         return res.status(200).json({
@@ -71,8 +72,31 @@ regd_users.post("/login", (req,res) => {
 
 // Add a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
-    //Write your code here
-    return res.status(300).json({message: "Yet to be implemented"});
+    //1. Get ISBN from URL parameters and review text from query parameter
+    const isbn = req.params.isbn;
+    const review = req.params.review;
+
+    //2. Get the username from the session (set during successful login)
+    //The username is guaranteed to existbecause this is an /auth/* route protected by middleware
+    const username = req.session.authorization.username;
+
+    //Check if the book exists
+    if (books[isbn]) {
+        let book = books[isbn];
+        //Initialize the reviews object if it doesn't exist
+        if (!book.reviews) {
+            book.reviews = {};
+        }
+        //Add or modify the review: The username is used as the key
+        book.reviews[username] = review;
+
+        return res.status(200).json({
+            message: 'Review for ISBN ${isbn} by user ${username} added/modyfied successfully.',
+            review: book.reviews[username] //Show the new review
+        });
+    } else {
+        return res.status(404).json({message: 'Book with ISBN ${isbn} not found.'});
+    }
 });
 
 module.exports.authenticated = regd_users;
