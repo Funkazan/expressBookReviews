@@ -1,10 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-let books = require("./booksdb.js");
+let books = require("./booksdb.js"); 
 const regd_users = express.Router();
 
-// Secret key for JWT (can be any string)
-const secretKey = "fingerprint_customer";
+// WICHTIG: Dieser Schlüssel MUSS mit dem in index.js verwendeten Schlüssel übereinstimmen.
 const jwtSecret = "access";
 
 // This array must contain users added through the registration process.
@@ -51,18 +50,14 @@ regd_users.post("/login", (req,res) => {
         // 3. Generate JWT
         let token = jwt.sign({
             data: username // Store the username in the token payload
-        }, secretKey, { expiresIn: '1h' }); // Token expires in 1 hour
-
-        // 4. Store token in session (if session/cookies are used, otherwise optional)
-         req.session.authorization = {
-             accessToken: token,
-             username: username
-         }
+        }, jwtSecret, { expiresIn: '1h' }); // Token expires in 1 hour
+        
+        // WICHTIG: Die Session-Speicherung (req.session.authorization = ...) wurde entfernt, um den Fehler zu beheben.
         
         // 5. Send success response (return the token)
         return res.status(200).json({
             message: "Customer successfully logged in",
-            token: token
+            token: token // Der Client muss dieses Token im "Authorization: Bearer <token>" Header senden.
         });
     } else {
         // Invalid login credentials
@@ -70,19 +65,25 @@ regd_users.post("/login", (req,res) => {
     }
 });
 
-// Add a book review
+// Add a book review (Protected route: Requires JWT in Authorization header)
 regd_users.put("/auth/review/:isbn", (req, res) => {
     //1. Get ISBN from URL parameters and review text from query parameter
     const isbn = req.params.isbn;
     const review = req.query.review;
 
-    //2. Get the username from the session (set during successful login)
-    //The username is guaranteed to existbecause this is an /auth/* route protected by middleware
-    const username = req.session.authorization.username;
+    //2. Get the username from the authenticated JWT payload (gespeichert in req.user durch Middleware)
+    // req.user ist der entschlüsselte Payload { data: username, iat: ..., exp: ... }
+    const username = req.user.data; 
+    
+    // Einfache Überprüfung, ob der Review-Text gesendet wurde
+    if (!review) {
+         return res.status(400).json({message: `Review text not provided in query parameter 'review'.`});
+    }
 
     //Check if the book exists
     if (books[isbn]) {
         let book = books[isbn];
+        
         //Initialize the reviews object if it doesn't exist
         if (!book.reviews) {
             book.reviews = {};
@@ -91,9 +92,38 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
         book.reviews[username] = review;
 
         return res.status(200).json({
-            message: `Review for ISBN ${isbn} by user ${username} added/modyfied successfully.`,
+            message: `Review for ISBN ${isbn} by user ${username} added/modified successfully.`,
             review: book.reviews[username] //Show the new review
         });
+    } else {
+        return res.status(404).json({message: `Book with ISBN ${isbn} not found.`});
+    }
+});
+
+// Delete a book review (Protected route: Requires JWT in Authorization header)
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+    // 1. Get ISBN from URL parameters
+    const isbn = req.params.isbn;
+    
+    // 2. Get the username from the authenticated JWT payload
+    const username = req.user.data;
+
+    // Check if the book exists
+    if (books[isbn]) {
+        let book = books[isbn];
+        
+        // Check if the user has a review for this book
+        if (book.reviews && book.reviews[username]) {
+            // Delete the review using the user's username as the key
+            delete book.reviews[username]; 
+            return res.status(200).json({
+                message: `Review for ISBN ${isbn} by user ${username} deleted successfully.`
+            });
+        } else {
+            return res.status(404).json({
+                message: `No review found for ISBN ${isbn} by user ${username}.`
+            });
+        }
     } else {
         return res.status(404).json({message: `Book with ISBN ${isbn} not found.`});
     }
