@@ -8,7 +8,7 @@ const public_users = express.Router();
 // Hilfsfunktionen (Tasks 10, 11, 12, 13: Implementierung mit Promises)
 // ----------------------------------------------------------------------
 
-// Task 10: Simuliert asynchronen Abruf aller Bücher
+// Task 10: Simuliert asynchronen Abruf der Buchliste
 const getBooksAsync = () => {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
